@@ -1,0 +1,95 @@
+
+<body>
+<nav class="tabs">
+  <ul>
+    <li class="is-active"><a>Calendar</a></li>
+    <li><a>Emails</a></li>
+    <li><a>Github Issues</a></li>
+  </ul>
+</nav>
+<section class="section has-background-light">
+  <div class="columns">
+    <div class="column">
+      <aside class="menu">
+        <p class="menu-label">
+          Calendars
+        </p>
+        <ul class="menu-list" id="calendars-list"></ul>
+      </aside>
+    </div>
+    <div class="column is-four-fifths">
+      <div class="section" id="events-list"></div>
+    </div>
+  </div>
+</section>
+</body>
+
+<script type="text/javascript">
+
+function loadCalendars() {
+  fetch('/calendar/calendars')
+  .then(res => res.json())
+  .then(json => {
+    const calendarsList = document.querySelector('#calendars-list');
+    for (let calendarItem of json['items']) {
+      const calendarElement = document.createElement('div');
+      calendarElement.innerHTML = `
+        <li>
+          <a href="#"
+             class="calendar-link"
+             data-calendar-id="${calendarItem['id']}"
+             onclick="return loadEvents('${calendarItem['id']}');">
+            ${calendarItem['summary']}
+          </a>
+        </li>
+      `;
+      calendarsList.appendChild(calendarElement);
+    }
+  });
+}
+
+function loadEvents(calendarId) {
+  const base = location.protocol + '//' + location.host + location.pathname;
+  const url = new URL(base + 'calendar/events');
+  url.search = new URLSearchParams({calendar_id: calendarId});
+
+  for (let anchor of document.getElementsByClassName('calendar-link')) {
+    if (anchor.dataset.calendarId == calendarId) {
+      anchor.classList.add('is-active');
+    } else {
+      anchor.classList.remove('is-active');
+    }
+  }
+
+  console.log(url)
+
+  fetch(url)
+    .then(res => res.json())
+    .then(json => {
+      const eventsList = document.querySelector('#events-list');
+      eventsList.innerHTML = '';
+      for (let eventItem of json['items']) {
+        const eventElement = document.createElement('div');
+        eventElement.innerHTML = `
+          <div class="column is-one-third">
+          <article class="message">
+            <div class="message-header">
+              <p>${eventItem['summary']}</p>
+              <button class="delete" aria-label="delete"></button>
+            </div>
+            <div class="message-body has-background-white">
+              <time>${eventItem['start']['dateTime']}</time>
+              <div>Location: ${eventItem['location']}</div>
+            </div>
+          </article>
+          </div>
+        `;
+        eventsList.appendChild(eventElement);
+      }
+    });
+
+  return false;
+}
+
+loadCalendars();
+</script>

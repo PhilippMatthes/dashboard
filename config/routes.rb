@@ -1,3 +1,9 @@
 Rails.application.routes.draw do
-  # For details on the DSL available within this file, see https://guides.rubyonrails.org/routing.html
+  get 'calendar/events'
+  get 'calendar/calendars'
+
+  get 'gmail/labels'
+
+  get 'welcome/index'
+  root 'welcome#index'
 end
