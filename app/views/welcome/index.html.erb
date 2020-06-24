@@ -116,6 +116,9 @@ function loadUpcomingEvents() {
       updateButtonTimeContainer.innerHTML = moment(new Date()).fromNow();
     }
   })
+  .catch((error) => {
+    updateButton.classList.remove('is-loading');
+  });
 }
 
 function updateRelativeDatetimes() {
