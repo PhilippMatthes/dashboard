@@ -1,18 +1,23 @@
 class CalendarController < ApplicationController
   def events
     calendar_list = CalendarService.list_calendar_lists()
-    result = calendar_list.items
-      .map { |item| item.id }
-      .map { |id| CalendarService
+    result = []
+    calendar_list.items.each do |calendar|
+      calendar_events = CalendarService
         .list_events(
-          id,
+          calendar.id,
           single_events: true,
           time_min: DateTime.now.rfc3339,
           time_max: (DateTime.now.midnight + 2).rfc3339
         )
         .items
-      }
-      .flatten
-    render :json => result
+
+      result << calendar_events.map { |calendar_event| {
+        :calendar => calendar,
+        :event => calendar_event
+      }}
+    end
+
+    render :json => result.flatten
   end
 end

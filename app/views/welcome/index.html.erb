@@ -1,10 +1,21 @@
 
 <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,500;1,700&display=swap" rel="stylesheet">
 
-<body class="has-background-black has-text-white" style="min-height: 100vh;">
-<div class="section">
-  <h1 class="m-b-lg is-white" style="font-size: 2rem; font-weight: 300;">Upcoming Events</h1>
-  <div class="columns" id="calendar-tiles-container"></div>
+<body class="has-background-light" style="min-height: 100vh;">
+<div class="section p-t-lg">
+  <div class="section p-t-none">
+    <h1 class="m-b-md is-white is-pulled-left" style="font-size: 2rem; font-weight: 300;">
+      Events
+    </h1>
+    <button id="update-button"
+            onclick="loadUpcomingEvents()"
+            class="button m-t-xs is-dark is-outlined is-pulled-right">
+      Last updated&nbsp<span id="update-button-time-container">right now</span>
+    </button>
+  </div>
+  <div class="section p-t-lg">
+    <div class="columns" id="calendar-tiles-container"></div>
+  </div>
 </div>
 </body>
 
@@ -44,32 +55,65 @@ class Event {
   }
 }
 
+class Calendar {
+  constructor(calendarItem) {
+    this.summary = calendarItem['summary'];
+    this.backgroundColor = calendarItem['background_color'];
+    this.foregroundColor = calendarItem['foreground_color'];
+  }
+}
+
+class CalendarEvent {
+  constructor(calendarEventItem) {
+    this.calendar = new Calendar(calendarEventItem['calendar']);
+    this.event = new Event(calendarEventItem['event']);
+  }
+}
+
 function loadUpcomingEvents() {
-  console.log('Loading upcoming events...');
+  const updateButton = document.getElementById('update-button');
+  updateButton.classList.add('is-loading');
 
   fetch('/calendar/events')
   .then(res => res.json())
   .then(json => {
-    const calendarItems = json;
+    const calendarEvents = json.map((calendarEventItem) => (new CalendarEvent(calendarEventItem)));
+    calendarEvents.sort((a, b) => (a.event.start.date() - b.event.start.date()));
+
     const container = document.querySelector('#calendar-tiles-container');
-    console.log(calendarItems);
-    for (const [index, calendarItem] of calendarItems.entries()) {
-      const event = new Event(calendarItem);
+    container.innerHTML = '';
+    for (const [index, calendarEvent] of calendarEvents.entries()) {
       const calendarElement = document.createElement('div');
-      const startDate = event.start.date();
+      const startDate = calendarEvent.event.start.date();
       const startMoment = moment(startDate);
+      const endMoment = moment(calendarEvent.event.end.date());
       const opacity = Math.max(0, 1 - (index / 6));
+      let foregroundColor = "#111";
+      if (index === 0) foregroundColor = calendarEvent.calendar.foregroundColor;
+      let backgroundColor = "#FFF";
+      if (index === 0) backgroundColor = calendarEvent.calendar.backgroundColor;
       calendarElement.innerHTML = `
         <div class="column">
-          <div class="box" style="background: #3867d6; color: #fff; opacity: ${opacity};">
-            <h1 style="font-weight: 300; font-size: 2rem;">${event.summary}</h1>
-            <h3 style="font-weight: 500; font-size: 1rem;"
-                class="live-datetime m-b-lg" data-date="${startDate}">${startMoment.fromNow()}</h3>
-            <h1 style="font-weight: 300; font-size: 1rem;">${startMoment.calendar()}</h1>
+          <div class="box p-none" style="opacity: ${opacity}; background: ${backgroundColor}; color: ${foregroundColor};">
+            <div class="p-md">
+              <h3 style="font-weight: 300; font-size: 1rem;">${calendarEvent.calendar.summary}</h3>
+              <h1 style="font-weight: 300; font-size: 2rem;">${calendarEvent.event.summary}</h1>
+              <h3 style="font-weight: 500; font-size: 1rem;"
+                  class="live-datetime m-b-lg" data-date="${startDate}">${startMoment.fromNow()}</h3>
+              <h3 style="font-weight: 300; font-size: 1rem;">${startMoment.calendar()} until ${endMoment.format('LT')}</h3>
+            </div>
+            <div class="rounded" style="height: 0.25rem; background-color: ${calendarEvent.calendar.backgroundColor};"></div>
           </div>
         </div>
       `;
       container.appendChild(calendarElement);
+
+      updateButton.classList.remove('is-loading');
+
+      const updateButtonTimeContainer = document.getElementById('update-button-time-container');
+      updateButtonTimeContainer.classList.add('live-datetime');
+      updateButtonTimeContainer.setAttribute('data-date', new Date());
+      updateButtonTimeContainer.innerHTML = moment(date).fromNow();
     }
   })
 }
@@ -84,6 +128,6 @@ function updateRelativeDatetimes() {
 
 loadUpcomingEvents();
 
-setInterval(loadUpcomingEvents, 1000 * 60 * 30);
+setInterval(loadUpcomingEvents, 1000 * 60 * 10);
 setInterval(updateRelativeDatetimes, 1000);
 </script>
