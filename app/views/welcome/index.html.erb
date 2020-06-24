@@ -113,7 +113,7 @@ function loadUpcomingEvents() {
       const updateButtonTimeContainer = document.getElementById('update-button-time-container');
       updateButtonTimeContainer.classList.add('live-datetime');
       updateButtonTimeContainer.setAttribute('data-date', new Date());
-      updateButtonTimeContainer.innerHTML = moment(date).fromNow();
+      updateButtonTimeContainer.innerHTML = moment(new Date()).fromNow();
     }
   })
 }
