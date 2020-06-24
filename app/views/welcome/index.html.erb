@@ -1,24 +1,14 @@
 
 <body>
-<nav class="tabs">
-  <ul>
-    <li class="is-active"><a>Calendar</a></li>
-    <li><a>Emails</a></li>
-    <li><a>Github Issues</a></li>
-  </ul>
-</nav>
-<section class="section has-background-light">
+<section class="section">
   <div class="columns">
     <div class="column">
-      <aside class="menu">
-        <p class="menu-label">
-          Calendars
-        </p>
+      <aside class="menu m-t-md has-background-light rounded">
         <ul class="menu-list" id="calendars-list"></ul>
       </aside>
     </div>
-    <div class="column is-four-fifths">
-      <div class="section" id="events-list"></div>
+    <div class="column is-two-thirds">
+      <div class="section p-sm" id="events-list"></div>
     </div>
   </div>
 </section>
@@ -39,6 +29,7 @@ function loadCalendars() {
              class="calendar-link"
              data-calendar-id="${calendarItem['id']}"
              onclick="return loadEvents('${calendarItem['id']}');">
+            <span class="tag is-black" style="width: 0.20rem; height: 0.75rem; background-color: ${calendarItem['backgroundColor']}"></span>
             ${calendarItem['summary']}
           </a>
         </li>
@@ -71,13 +62,13 @@ function loadEvents(calendarId) {
       for (let eventItem of json['items']) {
         const eventElement = document.createElement('div');
         eventElement.innerHTML = `
-          <div class="column is-one-third">
+          <div class="column">
           <article class="message">
-            <div class="message-header">
+            <div class="message-header has-background-info">
               <p>${eventItem['summary']}</p>
               <button class="delete" aria-label="delete"></button>
             </div>
-            <div class="message-body has-background-white">
+            <div class="message-body has-background-light">
               <time>${eventItem['start']['dateTime']}</time>
               <div>Location: ${eventItem['location']}</div>
             </div>
