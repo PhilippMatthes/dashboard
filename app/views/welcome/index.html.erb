@@ -1,86 +1,89 @@
 
-<body>
-<section class="section">
-  <div class="columns">
-    <div class="column">
-      <aside class="menu m-t-md has-background-light rounded">
-        <ul class="menu-list" id="calendars-list"></ul>
-      </aside>
-    </div>
-    <div class="column is-two-thirds">
-      <div class="section p-sm" id="events-list"></div>
-    </div>
-  </div>
-</section>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,500;1,700&display=swap" rel="stylesheet">
+
+<body class="has-background-black has-text-white" style="min-height: 100vh;">
+<div class="section">
+  <h1 class="m-b-lg is-white" style="font-size: 2rem; font-weight: 300;">Upcoming Events</h1>
+  <div class="columns" id="calendar-tiles-container"></div>
+</div>
 </body>
 
+<script src="https://momentjs.com/downloads/moment.min.js"></script>
 <script type="text/javascript">
 
-function loadCalendars() {
-  fetch('/calendar/calendars')
-  .then(res => res.json())
-  .then(json => {
-    const calendarsList = document.querySelector('#calendars-list');
-    for (let calendarItem of json['items']) {
-      const calendarElement = document.createElement('div');
-      calendarElement.innerHTML = `
-        <li>
-          <a href="#"
-             class="calendar-link"
-             data-calendar-id="${calendarItem['id']}"
-             onclick="return loadEvents('${calendarItem['id']}');">
-            <span class="tag is-black" style="width: 0.20rem; height: 0.75rem; background-color: ${calendarItem['backgroundColor']}"></span>
-            ${calendarItem['summary']}
-          </a>
-        </li>
-      `;
-      calendarsList.appendChild(calendarElement);
-    }
-  });
-}
-
-function loadEvents(calendarId) {
-  const base = location.protocol + '//' + location.host + location.pathname;
-  const url = new URL(base + 'calendar/events');
-  url.search = new URLSearchParams({calendar_id: calendarId});
-
-  for (let anchor of document.getElementsByClassName('calendar-link')) {
-    if (anchor.dataset.calendarId == calendarId) {
-      anchor.classList.add('is-active');
-    } else {
-      anchor.classList.remove('is-active');
-    }
+class EventDateTime {
+  constructor(eventDateTimeItem) {
+    this.dateString = eventDateTimeItem['date'];
+    this.dateTimeString = eventDateTimeItem['date_time'];
+    this.timeZoneString = eventDateTimeItem['time_zone'];
   }
 
-  console.log(url)
-
-  fetch(url)
-    .then(res => res.json())
-    .then(json => {
-      const eventsList = document.querySelector('#events-list');
-      eventsList.innerHTML = '';
-      for (let eventItem of json['items']) {
-        const eventElement = document.createElement('div');
-        eventElement.innerHTML = `
-          <div class="column">
-          <article class="message">
-            <div class="message-header has-background-info">
-              <p>${eventItem['summary']}</p>
-              <button class="delete" aria-label="delete"></button>
-            </div>
-            <div class="message-body has-background-light">
-              <time>${eventItem['start']['dateTime']}</time>
-              <div>Location: ${eventItem['location']}</div>
-            </div>
-          </article>
-          </div>
-        `;
-        eventsList.appendChild(eventElement);
-      }
-    });
-
-  return false;
+  date() {
+    if (this.dateString !== undefined) return new Date(this.dateString);
+    if (this.dateTimeString !== undefined) return new Date(this.dateTimeString);
+    return undefined;
+  }
 }
 
-loadCalendars();
+class Creator {
+  constructor(creatorItem) {
+    this.displayName = creatorItem['display_name'];
+    this.email = creatorItem['email'];
+    this.id = creatorItem['id'];
+  }
+}
+
+class Event {
+  constructor(eventItem) {
+    this.start = new EventDateTime(eventItem['start']);
+    this.end = new EventDateTime(eventItem['end']);
+    this.creator = new Creator(eventItem['creator']);
+    this.htmlLink = eventItem['html_link'];
+    this.status = eventItem['status'];
+    this.summary = eventItem['summary'];
+  }
+}
+
+function loadUpcomingEvents() {
+  console.log('Loading upcoming events...');
+
+  fetch('/calendar/events')
+  .then(res => res.json())
+  .then(json => {
+    const calendarItems = json;
+    const container = document.querySelector('#calendar-tiles-container');
+    console.log(calendarItems);
+    for (const [index, calendarItem] of calendarItems.entries()) {
+      const event = new Event(calendarItem);
+      const calendarElement = document.createElement('div');
+      const startDate = event.start.date();
+      const startMoment = moment(startDate);
+      const opacity = Math.max(0, 1 - (index / 6));
+      calendarElement.innerHTML = `
+        <div class="column">
+          <div class="box" style="background: #3867d6; color: #fff; opacity: ${opacity};">
+            <h1 style="font-weight: 300; font-size: 2rem;">${event.summary}</h1>
+            <h3 style="font-weight: 500; font-size: 1rem;"
+                class="live-datetime m-b-lg" data-date="${startDate}">${startMoment.fromNow()}</h3>
+            <h1 style="font-weight: 300; font-size: 1rem;">${startMoment.calendar()}</h1>
+          </div>
+        </div>
+      `;
+      container.appendChild(calendarElement);
+    }
+  })
+}
+
+function updateRelativeDatetimes() {
+  const elements = document.getElementsByClassName('live-datetime');
+  for (let element of elements) {
+    const date = new Date(element.dataset.date);
+    element.innerHTML = moment(date).fromNow();
+  }
+}
+
+loadUpcomingEvents();
+
+setInterval(loadUpcomingEvents, 1000 * 60 * 30);
+setInterval(updateRelativeDatetimes, 1000);
 </script>
