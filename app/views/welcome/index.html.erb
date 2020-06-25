@@ -88,13 +88,9 @@ function loadUpcomingEvents() {
       const startMoment = moment(startDate);
       const endMoment = moment(calendarEvent.event.end.date());
       const opacity = Math.max(0, 1 - (index / 6));
-      let foregroundColor = "#111";
-      if (index === 0) foregroundColor = calendarEvent.calendar.foregroundColor;
-      let backgroundColor = "#FFF";
-      if (index === 0) backgroundColor = calendarEvent.calendar.backgroundColor;
       calendarElement.innerHTML = `
         <div class="column">
-          <div class="box p-none" style="opacity: ${opacity}; background: ${backgroundColor}; color: ${foregroundColor};">
+          <div class="box p-none" style="opacity: ${opacity};">
             <div class="p-md">
               <h3 style="font-weight: 300; font-size: 1rem;">${calendarEvent.calendar.summary}</h3>
               <h1 style="font-weight: 300; font-size: 2rem;">${calendarEvent.event.summary}</h1>
