@@ -2,19 +2,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,500;1,700&display=swap" rel="stylesheet">
 
 <body class="has-background-light" style="min-height: 100vh;">
-<div class="section p-t-lg">
-  <div class="section p-t-none">
-    <h1 class="m-b-md is-white is-pulled-left" style="font-size: 2rem; font-weight: 300;">
-      Events
-    </h1>
-    <button id="update-button"
-            onclick="loadUpcomingEvents()"
-            class="button m-t-xs is-dark is-outlined is-pulled-right">
-      Last updated&nbsp<span id="update-button-time-container">right now</span>
-    </button>
+<div class="section p-none">
+  <div class="section p-l-lg p-r-lg p-t-md p-b-md">
+    <h1 style="font-weight: 300; font-size: 1rem;"><strong>Events</strong> updated&nbsp<span id="update-time-container">right now</span></h1>
   </div>
-  <div class="section p-t-lg">
-    <div class="columns" id="calendar-tiles-container"></div>
+  <div class="section m-none p-l-lg p-r-lg p-t-sm">
+    <div class="tile is-ancestor is-horizontal"
+         style="overflow-x: scroll"
+         id="calendar-tiles-container"></div>
   </div>
 </div>
 </body>
@@ -70,10 +65,11 @@ class CalendarEvent {
   }
 }
 
-function loadUpcomingEvents() {
-  const updateButton = document.getElementById('update-button');
-  updateButton.classList.add('is-loading');
+String.prototype.truncate = function(n) {
+  return this.substr(0, n - 1) + (this.length > n ? '&hellip;' : '');
+}
 
+function loadUpcomingEvents() {
   fetch('/calendar/events')
   .then(res => res.json())
   .then(json => {
@@ -82,34 +78,42 @@ function loadUpcomingEvents() {
 
     const container = document.querySelector('#calendar-tiles-container');
     container.innerHTML = '';
+
+    var day = new Date();
     for (const [index, calendarEvent] of calendarEvents.entries()) {
       const calendarElement = document.createElement('div');
       const startDate = calendarEvent.event.start.date();
+
+      if (day.getDate() !== startDate.getDate()) {
+        const separatorElement = document.createElement('div');
+        separatorElement.innerHTML = `
+          <div class="m-r-sm tile has-background-white" style="width: 0.25rem; height: 100%;"></div>
+        `;
+        container.appendChild(separatorElement);
+        day = startDate;
+      }
+
       const startMoment = moment(startDate);
       const endMoment = moment(calendarEvent.event.end.date());
       const opacity = Math.max(0, 1 - (index / 6));
       calendarElement.innerHTML = `
-        <div class="column">
-          <div class="box p-none" style="opacity: ${opacity};">
-            <div class="p-md">
-              <h3 style="font-weight: 300; font-size: 1rem;">${calendarEvent.calendar.summary}</h3>
-              <h1 style="font-weight: 300; font-size: 2rem;">${calendarEvent.event.summary}</h1>
-              <h3 style="font-weight: 500; font-size: 1rem;"
-                  class="live-datetime m-b-lg" data-date="${startDate}">${startMoment.fromNow()}</h3>
-              <h3 style="font-weight: 300; font-size: 1rem;">${startMoment.calendar()} until ${endMoment.format('LT')}</h3>
-            </div>
-            <div class="rounded" style="height: 0.25rem; background-color: ${calendarEvent.calendar.backgroundColor};"></div>
+        <div class="m-r-sm tile is-vertical has-background-white" style="opacity: ${opacity}; width: 12rem; height: 12rem;">
+          <div style="height: 0.25rem; background-color: ${calendarEvent.calendar.backgroundColor};"></div>
+          <div class="p-md">
+            <h3 style="font-weight: 300; font-size: 1rem;">${calendarEvent.calendar.summary.truncate(20)}</h3>
+            <h1 style="font-weight: 500; font-size: 1.25rem;">${calendarEvent.event.summary.truncate(16)}</h1>
+            <h3 style="font-weight: 300; font-size: 1rem;"
+                class="live-datetime m-b-lg" data-date="${startDate}">${startMoment.fromNow()}</h3>
+            <h3 style="font-weight: 300; font-size: 1rem;">${startMoment.calendar()} until ${endMoment.format('LT')}</h3>
           </div>
         </div>
       `;
       container.appendChild(calendarElement);
 
-      updateButton.classList.remove('is-loading');
-
-      const updateButtonTimeContainer = document.getElementById('update-button-time-container');
-      updateButtonTimeContainer.classList.add('live-datetime');
-      updateButtonTimeContainer.setAttribute('data-date', new Date());
-      updateButtonTimeContainer.innerHTML = moment(new Date()).fromNow();
+      const updateTimeContainer = document.getElementById('update-time-container');
+      updateTimeContainer.classList.add('live-datetime');
+      updateTimeContainer.setAttribute('data-date', new Date());
+      updateTimeContainer.innerHTML = moment(new Date()).fromNow();
     }
   })
   .catch((error) => {
