@@ -73,6 +73,16 @@ String.prototype.truncate = function(n) {
   return this.substr(0, n - 1) + (this.length > n ? '&hellip;' : '');
 }
 
+function getSunTimes() {
+  const now = new Date();
+  return SunCalc.getTimes(now, config.location.latitude, config.location.longitude);
+}
+
+function isNight(times) {
+  const now = new Date();
+  return moment(now).isBefore(times.sunrise) || moment(times.sunset).isBefore(now);
+}
+
 function loadUpcomingEvents() {
   fetch('/calendar/events')
   .then(res => res.json())
@@ -88,9 +98,8 @@ function loadUpcomingEvents() {
       const calendarElement = document.createElement('div');
       const startDate = calendarEvent.event.start.date();
 
-      const times = SunCalc.getTimes(new Date(), config.location.latitude, config.location.longitude);
-      const isNight = moment(times.sunset).isBefore();
-      const tileBackgroundColor = isNight ? 'has-background-black' : 'has-background-white';
+      const sunTimes = getSunTimes();
+      const tileBackgroundColor = isNight(sunTimes) ? 'has-background-black' : 'has-background-white';
       if (day.getDate() !== startDate.getDate()) {
         const separatorElement = document.createElement('div');
         separatorElement.innerHTML = `
@@ -110,7 +119,9 @@ function loadUpcomingEvents() {
             <h1 style="font-weight: 700; font-size: 1.25rem;">${calendarEvent.event.summary.truncate(24)}</h1>
             <h3 style="font-weight: 400; font-size: 1rem;"
                 class="live-datetime m-b-lg" data-date="${startDate}">${startMoment.fromNow()}</h3>
-            <h3 style="font-weight: 400; font-size: 1rem;">${startMoment.calendar()} until ${endMoment.format('LT')}</h3>
+            <h3 style="font-weight: 400; font-size: 1rem;">
+              ${startMoment.calendar(config.momentCalendarFormat)} until ${endMoment.format('HH:mm')}
+            </h3>
           </div>
         </div>
       `;
@@ -139,18 +150,14 @@ class DayNightColor {
   }
 
   switchElementsToNight() {
-    console.log(`Switching color ${this.dayCSSName} to night`);
     for (let element of document.querySelectorAll(`.${this.dayCSSName}`)) {
-      console.log(element);
       element.classList.remove(this.dayCSSName);
       element.classList.add(this.nightCSSName);
     }
   }
 
   switchElementsToDay() {
-    console.log(`Switching color ${this.nightCSSName} to day`);
     for (let element of document.querySelectorAll(`.${this.nightCSSName}`)) {
-      console.log(element);
       element.classList.remove(this.nightCSSName);
       element.classList.add(this.dayCSSName);
     }
@@ -166,22 +173,23 @@ const colors = [
 
 let currentDayNightState;
 function updateDayNightState() {
-  const times = SunCalc.getTimes(new Date(), config.location.latitude, config.location.longitude);
-  if (moment(times.sunset).isBefore() && currentDayNightState !== 'night') {
+  const sunTimes = getSunTimes();
+  if (isNight(sunTimes)) {
+    if (currentDayNightState === 'night') return;
     for (let color of colors) {
       color.switchElementsToNight();
     }
     currentDayNightState = 'night';
     const updateDayNightContainer = document.getElementById('update-day-night-container');
-    updateDayNightContainer.innerHTML = `☀️⬆️ ${moment(times.sunrise).format('LT')}`;
-  }
-  if (moment(times.sunrise).isBefore() && currentDayNightState !== 'day') {
+    updateDayNightContainer.innerHTML = `☀️⬆️ ${moment(sunTimes.sunrise).format('LT')}`;
+  } else {
+    if (currentDayNightState === 'day') return;
     for (let color of colors) {
       color.switchElementsToDay();
     }
     currentDayNightState = 'day';
     const updateDayNightContainer = document.getElementById('update-day-night-container');
-    updateDayNightContainer.innerHTML = `☀️⬇️ ${moment(times.sunset).format('LT')}`;
+    updateDayNightContainer.innerHTML = `☀️⬇️ ${moment(sunTimes.sunset).format('LT')}`;
   }
 }
 
