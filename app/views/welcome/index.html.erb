@@ -1,12 +1,13 @@
 
-<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,500;1,700&display=swap" rel="stylesheet">
-
-<body class="has-background-light" style="min-height: 100vh;">
+<body class="has-background-light has-text-black" style="min-height: 100vh;">
 <div class="section p-none">
-  <div class="section p-l-lg p-r-lg p-t-md p-b-md">
-    <h1 style="font-weight: 300; font-size: 1rem;"><strong>Events</strong> updated&nbsp<span id="update-time-container">right now</span></h1>
+  <div class="section p-l-lg p-r-lg p-t-md p-b-md" style="display: flex;">
+    <h1><span id="update-day-night-container"></span></h1>
+    <h1 style="font-weight: 400; font-size: 1rem; margin-left: auto; order: 2;">
+      Events updated&nbsp<span id="update-time-container"></span>
+    </h1>
   </div>
-  <div class="section m-none p-l-lg p-r-lg p-t-sm">
+  <div class="section m-none p-l-lg p-r-lg p-t-sm" style="width: 100vw;">
     <div class="tile is-ancestor is-horizontal"
          style="overflow-x: scroll"
          id="calendar-tiles-container"></div>
@@ -14,7 +15,10 @@
 </div>
 </body>
 
-<script src="https://momentjs.com/downloads/moment.min.js"></script>
+<%= javascript_include_tag "suncalc.js" %>
+<%= javascript_include_tag "moment.min.js" %>
+<%= javascript_include_tag "config.js" %>
+
 <script type="text/javascript">
 
 class EventDateTime {
@@ -80,31 +84,33 @@ function loadUpcomingEvents() {
     container.innerHTML = '';
 
     var day = new Date();
-    for (const [index, calendarEvent] of calendarEvents.entries()) {
+    for (let [index, calendarEvent] of calendarEvents.entries()) {
       const calendarElement = document.createElement('div');
       const startDate = calendarEvent.event.start.date();
 
+      const times = SunCalc.getTimes(new Date(), config.location.latitude, config.location.longitude);
+      const isNight = moment(times.sunset).isBefore();
+      const tileBackgroundColor = isNight ? 'has-background-black' : 'has-background-white';
       if (day.getDate() !== startDate.getDate()) {
         const separatorElement = document.createElement('div');
         separatorElement.innerHTML = `
-          <div class="m-r-sm tile has-background-white" style="width: 0.25rem; height: 100%;"></div>
+          <div class="m-r-sm tile ${tileBackgroundColor}" style="width: 0.25rem; height: 100%;"></div>
         `;
         container.appendChild(separatorElement);
         day = startDate;
       }
-
       const startMoment = moment(startDate);
       const endMoment = moment(calendarEvent.event.end.date());
-      const opacity = Math.max(0, 1 - (index / 6));
       calendarElement.innerHTML = `
-        <div class="m-r-sm tile is-vertical has-background-white" style="opacity: ${opacity}; width: 12rem; height: 12rem;">
+        <div class="m-r-sm tile is-vertical ${tileBackgroundColor}"
+             style="width: 12rem; height: 14rem;">
           <div style="height: 0.25rem; background-color: ${calendarEvent.calendar.backgroundColor};"></div>
           <div class="p-md">
-            <h3 style="font-weight: 300; font-size: 1rem;">${calendarEvent.calendar.summary.truncate(20)}</h3>
-            <h1 style="font-weight: 500; font-size: 1.25rem;">${calendarEvent.event.summary.truncate(16)}</h1>
-            <h3 style="font-weight: 300; font-size: 1rem;"
+            <h3 style="font-weight: 400; font-size: 1rem;">${calendarEvent.calendar.summary.truncate(20)}</h3>
+            <h1 style="font-weight: 700; font-size: 1.25rem;">${calendarEvent.event.summary.truncate(24)}</h1>
+            <h3 style="font-weight: 400; font-size: 1rem;"
                 class="live-datetime m-b-lg" data-date="${startDate}">${startMoment.fromNow()}</h3>
-            <h3 style="font-weight: 300; font-size: 1rem;">${startMoment.calendar()} until ${endMoment.format('LT')}</h3>
+            <h3 style="font-weight: 400; font-size: 1rem;">${startMoment.calendar()} until ${endMoment.format('LT')}</h3>
           </div>
         </div>
       `;
@@ -115,9 +121,6 @@ function loadUpcomingEvents() {
       updateTimeContainer.setAttribute('data-date', new Date());
       updateTimeContainer.innerHTML = moment(new Date()).fromNow();
     }
-  })
-  .catch((error) => {
-    updateButton.classList.remove('is-loading');
   });
 }
 
@@ -129,8 +132,63 @@ function updateRelativeDatetimes() {
   }
 }
 
+class DayNightColor {
+  constructor(dayCSSName, nightCSSName) {
+    this.dayCSSName = dayCSSName;
+    this.nightCSSName = nightCSSName;
+  }
+
+  switchElementsToNight() {
+    console.log(`Switching color ${this.dayCSSName} to night`);
+    for (let element of document.querySelectorAll(`.${this.dayCSSName}`)) {
+      console.log(element);
+      element.classList.remove(this.dayCSSName);
+      element.classList.add(this.nightCSSName);
+    }
+  }
+
+  switchElementsToDay() {
+    console.log(`Switching color ${this.nightCSSName} to day`);
+    for (let element of document.querySelectorAll(`.${this.nightCSSName}`)) {
+      console.log(element);
+      element.classList.remove(this.nightCSSName);
+      element.classList.add(this.dayCSSName);
+    }
+  }
+}
+
+const colors = [
+  new DayNightColor('has-background-white', 'has-background-black'),
+  new DayNightColor('has-background-light', 'has-background-dark'),
+  new DayNightColor('has-text-black', 'has-text-white'),
+  new DayNightColor('has-text-dark', 'has-text-light'),
+];
+
+let currentDayNightState;
+function updateDayNightState() {
+  const times = SunCalc.getTimes(new Date(), config.location.latitude, config.location.longitude);
+  if (moment(times.sunset).isBefore() && currentDayNightState !== 'night') {
+    for (let color of colors) {
+      color.switchElementsToNight();
+    }
+    currentDayNightState = 'night';
+    const updateDayNightContainer = document.getElementById('update-day-night-container');
+    updateDayNightContainer.innerHTML = `☀️⬆️ ${moment(times.sunrise).format('LT')}`;
+  }
+  if (moment(times.sunrise).isBefore() && currentDayNightState !== 'day') {
+    for (let color of colors) {
+      color.switchElementsToDay();
+    }
+    currentDayNightState = 'day';
+    const updateDayNightContainer = document.getElementById('update-day-night-container');
+    updateDayNightContainer.innerHTML = `☀️⬇️ ${moment(times.sunset).format('LT')}`;
+  }
+}
+
 loadUpcomingEvents();
+updateDayNightState();
 
 setInterval(loadUpcomingEvents, 1000 * 60 * 10);
 setInterval(updateRelativeDatetimes, 1000);
+setInterval(updateDayNightState, 1000 * 60);
 </script>
