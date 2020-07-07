@@ -2,15 +2,19 @@
 <body class="has-background-light has-text-black" style="min-height: 100vh;">
 <div class="section p-none">
   <div class="section p-l-lg p-r-lg p-t-md p-b-md" style="display: flex;">
-    <h1><span id="update-day-night-container"></span></h1>
+    <h1><span id="update-clock-container" class="m-r-sm"></span><span id="update-day-night-container"></span></h1>
     <h1 style="font-weight: 400; font-size: 1rem; margin-left: auto; order: 2;">
       Events updated&nbsp<span id="update-time-container"></span>
     </h1>
   </div>
-  <div class="section m-none p-l-lg p-r-lg p-t-sm" style="width: 100vw;">
-    <div class="tile is-ancestor is-horizontal"
+  <div class="section m-none p-l-none p-r-none p-t-sm p-b-md" style="width: 100vw;">
+    <div class="tile p-l-lg is-ancestor is-horizontal tile-container"
          style="overflow-x: scroll"
          id="calendar-tiles-container"></div>
+  </div>
+  <div class="section m-none p-l-none p-r-none p-t-sm" style="width: 100vw;">
+    <div class="tile p-l-lg p-r-lg is-ancestor is-vertical"
+         id="gmail-tiles-container"></div>
   </div>
 </div>
 </body>
@@ -103,7 +107,7 @@ function loadUpcomingEvents() {
       if (day.getDate() !== startDate.getDate()) {
         const separatorElement = document.createElement('div');
         separatorElement.innerHTML = `
-          <div class="m-r-sm tile ${tileBackgroundColor}" style="width: 0.25rem; height: 100%;"></div>
+          <div class="m-r-sm m-l-sm tile"></div>
         `;
         container.appendChild(separatorElement);
         day = startDate;
@@ -111,14 +115,14 @@ function loadUpcomingEvents() {
       const startMoment = moment(startDate);
       const endMoment = moment(calendarEvent.event.end.date());
       calendarElement.innerHTML = `
-        <div class="m-r-sm tile is-vertical ${tileBackgroundColor}"
+        <div class="m-r-sm m-l-sm m-b-sm m-t-sm tile is-vertical has-shadow ${tileBackgroundColor}"
              style="width: 12rem; height: 14rem;">
           <div style="height: 0.25rem; background-color: ${calendarEvent.calendar.backgroundColor};"></div>
           <div class="p-md">
             <h3 style="font-weight: 400; font-size: 1rem;">${calendarEvent.calendar.summary.truncate(20)}</h3>
-            <h1 style="font-weight: 700; font-size: 1.25rem;">${calendarEvent.event.summary.truncate(24)}</h1>
+            <h1 style="font-weight: 700; font-size: 1.25rem; height: 4rem;">${calendarEvent.event.summary.truncate(24)}</h1>
             <h3 style="font-weight: 400; font-size: 1rem;"
-                class="live-datetime m-b-lg" data-date="${startDate}">${startMoment.fromNow()}</h3>
+                class="live-datetime m-b-sm" data-date="${startDate}">${startMoment.fromNow()}</h3>
             <h3 style="font-weight: 400; font-size: 1rem;">
               ${startMoment.calendar(config.momentCalendarFormat)} until ${endMoment.format('HH:mm')}
             </h3>
@@ -181,7 +185,7 @@ function updateDayNightState() {
     }
     currentDayNightState = 'night';
     const updateDayNightContainer = document.getElementById('update-day-night-container');
-    updateDayNightContainer.innerHTML = `☀️⬆️ ${moment(sunTimes.sunrise).format('LT')}`;
+    updateDayNightContainer.innerHTML = `☀️⬆️ ${moment(sunTimes.sunrise).format('HH:mm')}`;
   } else {
     if (currentDayNightState === 'day') return;
     for (let color of colors) {
@@ -189,14 +193,68 @@ function updateDayNightState() {
     }
     currentDayNightState = 'day';
     const updateDayNightContainer = document.getElementById('update-day-night-container');
-    updateDayNightContainer.innerHTML = `☀️⬇️ ${moment(sunTimes.sunset).format('LT')}`;
+    updateDayNightContainer.innerHTML = `☀️⬇️ ${moment(sunTimes.sunset).format('HH:mm')}`;
   }
+}
+
+function updateClock() {
+  const container = document.getElementById('update-clock-container');
+  container.innerHTML = `${moment().format('HH:mm')}`;
+}
+
+let loadedMessages = {};
+function loadMessages() {
+  fetch('/gmail/messages')
+  .then(res => res.json())
+  .then(json => {
+    const messagesContainer = document.getElementById('gmail-tiles-container');
+
+    for (let message of json['messages']) {
+      const messageId = message.id;
+      if (loadedMessages[messageId] !== undefined) continue;
+      loadedMessages[messageId] = json;
+      fetch(`/gmail/message?id=${messageId}`)
+      .then(res => res.json())
+      .then(json => {
+        const snippet = json['snippet'];
+        const date = new Date(parseInt(json['internalDate']));
+        let subject, from, to;
+        for (let header of json['payload']['headers']) {
+          const name = header['name'];
+          const value = header['value'];
+          if (name === 'Subject') subject = value;
+          if (name === 'From') from = value;
+          if (name === 'To') to = value;
+        }
+
+        const sunTimes = getSunTimes();
+        const tileBackgroundColor = isNight(sunTimes) ? 'has-background-black' : 'has-background-white';
+
+        const messageElement = document.createElement('div');
+        messageElement.innerHTML = `
+          <div class="m-r-sm m-l-sm m-b-md m-t-md tile is-vertical has-shadow ${tileBackgroundColor}">
+          <div class="has-background-grey-light" style="height: 0.25rem;"></div>
+          <div class="p-md">
+            <h3 style="font-weight: 400; font-size: 1rem;">${moment(date).calendar(config.momentCalendarFormat)} - From ${from} to ${to}</h3>
+            <h1 style="font-weight: 700; font-size: 1.25rem;">${subject}</h1>
+            <h3 style="font-weight: 400; font-size: 1rem;">${snippet}</h3>
+          </div>
+        </div>
+        `;
+        messagesContainer.appendChild(messageElement);
+      });
+    }
+  });
 }
 
 loadUpcomingEvents();
 updateDayNightState();
+updateClock();
+loadMessages()
 
 setInterval(loadUpcomingEvents, 1000 * 60 * 10);
 setInterval(updateRelativeDatetimes, 1000);
 setInterval(updateDayNightState, 1000 * 60);
+setInterval(updateClock, 1000 * 30);
+setInterval(loadMessages, 1000 * 60 * 5);
 </script>

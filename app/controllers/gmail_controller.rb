@@ -1,7 +1,13 @@
 class GmailController < ApplicationController
-  def labels
+  def messages
     user_id = "me"
-    result = GmailService.list_user_labels user_id
-    render :json => result.labels
+    result = GmailService.list_user_messages user_id, :q => "is:unread"
+    render :json => result
+  end
+
+  def message
+    user_id = "me"
+    result = GmailService.get_user_message user_id, params[:id]
+    render :json => result
   end
 end
