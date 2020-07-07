@@ -208,12 +208,35 @@ function loadMessages() {
   .then(res => res.json())
   .then(json => {
     const messagesContainer = document.getElementById('gmail-tiles-container');
+    const messages = json['messages'];
 
-    for (let message of json['messages']) {
-      const messageId = message.id;
-      if (loadedMessages[messageId] !== undefined) continue;
-      loadedMessages[messageId] = json;
-      fetch(`/gmail/message?id=${messageId}`)
+    // If there are no messages, remove all loaded messages
+    if (messages === undefined) {
+      for (let [id, message] of Object.entries(loadedMessages)) {
+        if (message === undefined) continue;
+        loadedMessages[id] = undefined;
+        document.getElementById(`message-${id}`).remove();
+      }
+      return;
+    }
+
+    // Remove all loaded messages, which have been read
+    for (let [id, message] of Object.entries(loadedMessages)) {
+      if (message === undefined) continue;
+      if (!messages.map((m) => (m.id)).includes(id)) {
+        console.log(`Message ${message.id} was read. Removing from cached messages...`);
+        loadedMessages[id] = undefined;
+        document.getElementById(`message-${id}`).remove();
+      }
+    }
+
+    for (let message of messages) {
+      if (loadedMessages[message.id] !== undefined) continue;
+      loadedMessages[message.id] = message;
+
+      console.log(`Loading Message ${message.id}...`);
+
+      fetch(`/gmail/message?id=${message.id}`)
       .then(res => res.json())
       .then(json => {
         const snippet = json['snippet'];
@@ -232,7 +255,7 @@ function loadMessages() {
 
         const messageElement = document.createElement('div');
         messageElement.innerHTML = `
-          <div class="m-r-sm m-l-sm m-b-md m-t-md tile is-vertical has-shadow ${tileBackgroundColor}">
+        <div id="message-${message.id}" class="m-r-sm m-l-sm m-b-md m-t-md tile is-vertical has-shadow ${tileBackgroundColor}">
           <div class="has-background-grey-light" style="height: 0.25rem;"></div>
           <div class="p-md">
             <h3 style="font-weight: 400; font-size: 1rem;">${moment(date).calendar(config.momentCalendarFormat)} - From ${from} to ${to}</h3>
