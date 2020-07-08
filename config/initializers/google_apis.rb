@@ -11,7 +11,8 @@ CREDENTIALS_PATH = "credentials/credentials.json".freeze
 
 
 if !File.file?(CREDENTIALS_PATH)
-  raise "credentials.json not found"
+  raise "credentials.json not found. Download it from the google console " \
+        "and drop it into credentials/credentials.json."
 end
 
 
@@ -51,7 +52,10 @@ end
 def authorize_gmail
   authorize(
     "credentials/gmail_token.yaml",
-     Google::Apis::GmailV1::AUTH_GMAIL_READONLY
+    [
+      Google::Apis::GmailV1::AUTH_GMAIL_READONLY,
+      Google::Apis::GmailV1::AUTH_GMAIL_MODIFY,
+    ]
   )
 end
 

@@ -258,15 +258,59 @@ function loadMessages() {
         <div id="message-${message.id}" class="m-r-sm m-l-sm m-b-md m-t-md tile is-vertical has-shadow ${tileBackgroundColor}">
           <div class="has-background-grey-light" style="height: 0.25rem;"></div>
           <div class="p-md">
+            <div class="is-pulled-left" style="width: 70%">
             <h3 style="font-weight: 400; font-size: 1rem;">${moment(date).calendar(config.momentCalendarFormat)} - From ${from} to ${to}</h3>
             <h1 style="font-weight: 700; font-size: 1.25rem;">${subject}</h1>
             <h3 style="font-weight: 400; font-size: 1rem;">${snippet}</h3>
+            </div>
+            <div class="is-pulled-right" style="width: 30%>
+            <div class="buttons m-t-sm">
+              <button id="trash-button-${message.id}"
+                      onclick="trashMessage('${message.id}')"
+                      class="button">
+                <span class="icon is-small">🗑️</span>
+                <span>Trash</span>
+              </button>
+              <button id="read-button-${message.id}"
+                      onclick="readMessage('${message.id}')"
+                      class="button">
+                <span class="icon is-small">📤</span>
+                <span>Read</span>
+              </button>
+            </div>
+            </div>
           </div>
         </div>
         `;
         messagesContainer.appendChild(messageElement);
       });
     }
+  });
+}
+
+function readMessage(messageId) {
+  const readButton = document.getElementById(`read-button-${messageId}`);
+  readButton.classList.add('is-loading');
+  fetch(`/gmail/read?id=${messageId}`)
+  .then(response => {
+    readButton.classList.remove('is-loading');
+    if (response.status !== 200) return;
+    loadedMessages[messageId] = undefined;
+    document.getElementById(`message-${messageId}`).remove();
+    loadMessages();
+  });
+}
+
+function trashMessage(messageId) {
+  const trashButton = document.getElementById(`trash-button-${messageId}`);
+  trashButton.classList.add('is-loading');
+  fetch(`/gmail/trash?id=${messageId}`)
+  .then(response => {
+    trashButton.classList.remove('is-loading');
+    if (response.status !== 200) return;
+    loadedMessages[messageId] = undefined;
+    document.getElementById(`message-${messageId}`).remove();
+    loadMessages();
   });
 }
 

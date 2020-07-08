@@ -3,6 +3,8 @@ Rails.application.routes.draw do
 
   get 'gmail/messages'
   get 'gmail/message'
+  get 'gmail/read'
+  get 'gmail/trash'
 
   get 'welcome/index'
   root 'welcome#index'
